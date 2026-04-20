@@ -1,0 +1,58 @@
+name: "kimi-vllm-agg-gb200-2nodes"
+
+model:
+  path: "kimi-k2.5-nvfp4"
+  container: "v0.18.0"
+  precision: "fp4"
+
+dynamo:
+  version: 1.0.1
+  install: true
+
+setup_script: install-deps.sh
+
+
+resources:
+  gpu_type: "gb200"
+  gpus_per_node: 4
+  agg_nodes: 8
+  agg_workers: 1
+  gpus_per_agg: 32
+
+frontend:
+  type: dynamo
+  enable_multiple_frontends: false
+
+backend:
+  type: vllm
+  connector: null
+
+  aggregated_environment:
+    NCCL_CUMEM_ENABLE: "1"
+    NCCL_MNNVL_ENABLE: "1"
+    NCCL_NVLS_ENABLE: "1"
+    VLLM_USE_NCCL_SYMM_MEM: "1"
+    VLLM_FLASHINFER_MOE_BACKEND: "latency"
+
+  vllm_config:
+    aggregated:
+      served-model-name: "nvidia/Kimi-K2.5-NVFP4"
+      tensor-parallel-size: 1
+      data-parallel-size: 32
+      data-parallel-rpc-port: 13345
+      enable-expert-parallel: true
+      max-model-len: 16384
+      max-num-seqs: 256
+      safetensors-load-strategy: "prefetch"
+      trust-remote-code: true
+      all2all-backend: "flashinfer_nvlink_one_sided"
+
+benchmark:
+  type: "sa-bench"
+  isl: 2
+  osl: 1024
+  concurrencies: "2048"
+  num_prompts: 4096
+  use_chat_template: false 
+  req_rate: "inf"
+  random_range_ratio: 1.0
