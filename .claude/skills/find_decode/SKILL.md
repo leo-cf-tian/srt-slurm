@@ -80,17 +80,10 @@ Use a wide sweep by default: `"2x4x8x16x32x64x128x256x512x1024x1536x2048x3072x40
 
 ### Decode kv-transfer-config
 
-For decode-only benchmarking (finding best decode config in isolation), use:
-```yaml
-kv-transfer-config: '{"kv_connector": "DecodeBenchConnector", "kv_role": "kv_both"}'
-```
-
-For end-to-end disaggregated serving with real prefill+decode, use:
+Use the same `kv-transfer-config` as the base recipe (typically `NixlConnector`):
 ```yaml
 kv-transfer-config: '{"kv_connector": "NixlConnector", "kv_role": "kv_both"}'
 ```
-
-Default to `DecodeBenchConnector` unless the user says otherwise.
 
 ### Name field
 
@@ -175,7 +168,7 @@ backend:
       stream-interval: 20
 
     decode:
-      kv-transfer-config: '{"kv_connector": "DecodeBenchConnector", "kv_role": "kv_both"}'
+      kv-transfer-config: '{"kv_connector": "NixlConnector", "kv_role": "kv_both"}'
       kv-cache-dtype: "fp8"
       tensor-parallel-size: 2
       pipeline-parallel-size: 1

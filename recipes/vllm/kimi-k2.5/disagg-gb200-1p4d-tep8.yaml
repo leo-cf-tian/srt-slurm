@@ -1,12 +1,12 @@
 name: "coreai_devtech_all-sa.kimi-vllm-disagg-gb200-1p4d-tep8"
 
 model:
-  path: "kimi-k2.5-nvfp4"
-  container: "v0.18.0"
+  path: "/lustre/fsw/coreai_cserve_dev/lctian/semi-analysis/models/Kimi-K2.5-NVFP4"
+  container: "vllm/vllm-openai:cu130-nightly-aarch64"
   precision: "fp4"
 
 dynamo:
-  version: 1.0.1
+  top_of_tree: true
   install: true
 
 setup_script: install-deps.sh

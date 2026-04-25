@@ -1,24 +1,24 @@
 name: "minimax-m2.5-vllm-disagg-gb200-decode-tep2"
 
 model:
-  path: "/lustre/fsw/coreai_dlfw_dev/lctian/semi-analysis/models/MiniMax-M2.5-NVFP4"
-  container: "/lustre/fsw/coreai_dlfw_dev/lctian/semi-analysis/nightly+dynamo+cuda13.sqsh"
+  path: "/lustre/fsw/coreai_cserve_dev/lctian/semi-analysis/models/MiniMax-M2.5-NVFP4"
+  container: "vllm/vllm-openai:cu130-nightly-aarch64"
   precision: "fp4"
 
 dynamo:
   top_of_tree: true
-  install: false
+  install: true
 
 setup_script: install-deps.sh
 
 resources:
   gpu_type: "gb200"
   gpus_per_node: 4
-  prefill_nodes: 1
+  prefill_nodes: 2
   decode_nodes: 1
-  prefill_workers: 1
+  prefill_workers: 2
   decode_workers: 1
-  gpus_per_prefill: 2
+  gpus_per_prefill: 4
   gpus_per_decode: 2
 
 frontend:
@@ -30,59 +30,67 @@ backend:
   connector: null
 
   prefill_environment:
-    VLLM_ENGINE_READY_TIMEOUT_S: "3600"
-    VLLM_FLASHINFER_ALLREDUCE_BACKEND: "mnnvl"
+    VLLM_USE_FLASHINFER_MOE_FP4: "1"
     VLLM_USE_NCCL_SYMM_MEM: "1"
     NCCL_CUMEM_ENABLE: "1"
     NCCL_MNNVL_ENABLE: "1"
     NCCL_NVLS_ENABLE: "1"
+    VLLM_RPC_TIMEOUT: "200000"
 
   decode_environment:
-    VLLM_ENGINE_READY_TIMEOUT_S: "3600"
-    VLLM_FLASHINFER_ALLREDUCE_BACKEND: "mnnvl"
+    VLLM_USE_FLASHINFER_MOE_FP4: "1"
     VLLM_USE_NCCL_SYMM_MEM: "1"
     NCCL_CUMEM_ENABLE: "1"
     NCCL_MNNVL_ENABLE: "1"
     NCCL_NVLS_ENABLE: "1"
+    VLLM_RPC_TIMEOUT: "200000"
 
   vllm_config:
     prefill:
       kv-transfer-config: '{"kv_connector": "NixlConnector", "kv_role": "kv_both"}'
+      served-model-name: "nvidia/MiniMax-M2.5-NVFP4"
       kv-cache-dtype: "fp8"
       tensor-parallel-size: 1
       pipeline-parallel-size: 1
-      data-parallel-size: 2
+      data-parallel-size: 4
       data-parallel-rpc-port: 13345
       enable-expert-parallel: true
-      enforce-eager: true
-      safetensors-load-strategy: "prefetch"
       max-model-len: 10240
-      max-num-batched-tokens: 10240
+      max-num-seqs: 64
+      enforce-eager: true
+      compilation-config: '{"custom_ops":["+quant_fp8","+rms_norm","+rotary_embedding"],"pass_config":{"fuse_attn_quant":true,"fuse_allreduce_rms":true}}'
+      max-num-batched-tokens: 16384
+      safetensors-load-strategy: "prefetch"
       trust-remote-code: true
       no-enable-prefix-caching: true
       no-enable-chunked-prefill: true
+      all2all-backend: "allgather_reducescatter"
+      gpu-memory-utilization: 0.9
 
     decode:
-      kv-transfer-config: '{"kv_connector": "DecodeBenchConnector", "kv_role": "kv_both"}'
+      kv-transfer-config: '{"kv_connector": "NixlConnector", "kv_role": "kv_both"}'
+      served-model-name: "nvidia/MiniMax-M2.5-NVFP4"
       kv-cache-dtype: "fp8"
       tensor-parallel-size: 2
       pipeline-parallel-size: 1
       enable-expert-parallel: true
-      async-scheduling: true
-      max-num-seqs: 16
-      block-size: 64
-      compilation-config: '{"cudagraph_mode":"FULL_DECODE_ONLY","custom_ops":["+quant_fp8","+rms_norm","+rotary_embedding"],"pass_config":{"fuse_attn_quant":true,"fuse_allreduce_rms":true}}'
-      gpu-memory-utilization: 0.9
-      stream-interval: 50
-      safetensors-load-strategy: "prefetch"
       max-model-len: 10240
+      max-num-seqs: 512
       max-num-batched-tokens: 10240
+      safetensors-load-strategy: "prefetch"
       trust-remote-code: true
       no-enable-prefix-caching: true
       no-enable-chunked-prefill: true
+      async-scheduling: true
+      all2all-backend: "allgather_reducescatter"
+      compilation-config: '{"cudagraph_mode":"FULL_DECODE_ONLY","custom_ops":["+quant_fp8","+rms_norm","+rotary_embedding"],"pass_config":{"fuse_attn_quant":true,"fuse_allreduce_rms":true}}'
+      gpu-memory-utilization: 0.9
+      stream-interval: 50
+      max-cudagraph-capture-size: 512
+
 
 benchmark:
   type: "sa-bench"
-  isl: 1024
+  isl: 8192
   osl: 1024
-  concurrencies: "2x4x8x16x32"
+  concurrencies: "2x4x8x16x32x64x128x256x512x1024"
