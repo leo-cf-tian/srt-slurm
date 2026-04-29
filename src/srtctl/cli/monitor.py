@@ -1119,20 +1119,8 @@ def _load_session(session_file: Path, key: str) -> tuple[set[str], Path | None]:
     return set(), None
 
 
-def main() -> None:
-    parser = argparse.ArgumentParser(
-        description="Live CLI dashboard for srt-slurm jobs",
-        formatter_class=argparse.RawDescriptionHelpFormatter,
-        epilog=__doc__,
-    )
-    parser.add_argument("--outputs", "-o", type=Path, default=None, help="Path to outputs/ directory")
-    parser.add_argument("--interval", "-i", type=float, default=5.0, help="Refresh interval in seconds (default: 5)")
-    parser.add_argument("--all", "-a", action="store_true", help="Include older jobs from outputs/ on startup")
-    parser.add_argument("--once", action="store_true", help="Print once and exit")
-    parser.add_argument("--resume", type=str, default=None, metavar="KEY", help="Resume a previous session by key")
-    parser.add_argument("--clear-sessions", action="store_true", help="Delete all saved --resume session state and exit")
-    args = parser.parse_args()
-
+def _execute(args: argparse.Namespace) -> None:
+    """Run the dashboard with a pre-parsed argparse namespace."""
     session_file = _session_path()
 
     if args.clear_sessions:
@@ -1449,7 +1437,22 @@ def main() -> None:
             except Exception:
                 pass
         if not args.once:
-            console.print(f"[dim]To resume this session, use[/dim] [bold cyan]--resume {key}[/bold cyan]")
+            console.print(f"[dim]To resume this session, use[/dim] [bold cyan]srtctl monitor --resume {key}[/bold cyan]")
+
+
+def main() -> None:
+    parser = argparse.ArgumentParser(
+        description="Live CLI dashboard for srt-slurm jobs",
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+        epilog=__doc__,
+    )
+    parser.add_argument("--outputs", "-o", type=Path, default=None, help="Path to outputs/ directory")
+    parser.add_argument("--interval", "-i", type=float, default=5.0, help="Refresh interval in seconds (default: 5)")
+    parser.add_argument("--all", "-a", action="store_true", help="Include older jobs from outputs/ on startup")
+    parser.add_argument("--once", action="store_true", help="Print once and exit")
+    parser.add_argument("--resume", type=str, default=None, metavar="KEY", help="Resume a previous session by key")
+    parser.add_argument("--clear-sessions", action="store_true", help="Delete all saved --resume session state and exit")
+    _execute(parser.parse_args())
 
 
 if __name__ == "__main__":
